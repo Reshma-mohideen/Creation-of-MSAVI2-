@@ -1,0 +1,51 @@
+<|DOCTYPE>
+<html>
+<head>
+<link ref>
+//Import Area of interest
+var polygon = location1;
+Map.centerObject(location1, 18);
+//Import Sentinel-2 image collection
+var s2 = ee.ImageCollection('COPERNICUS/S2');
+var image =  s2.filterDate('2020-01-01', '2020-06-30')
+//sort by cloud cover property
+.sort('CLOUD_COVER') 
+//overlapping Sentinel-2 images
+.mosaic()
+.divide(10000);
+print('image collection', image);
+//create composite with maximum value function
+Map.addLayer(image, {bands: ['B8', 'B4'], min: 0, max: 0.4}, 'composite').polygon;
+//compute MSAVI2 using expression
+var msavi2 = image.expression(
+  '(2 * NIR + 1 - sqrt(pow((2 * NIR + 1), 2) - 8 * (NIR - RED)) ) / 2', 
+  {
+    'NIR': image.select('B8'), 
+    'RED': image.select('B4')
+    .float().rename('MSAVI2')
+  }
+);
+var date_1 = '2020-01-01';
+var date_2 = '2020-06-30';
+//Feature collection
+var col = ee.ImageCollection('COPERNICUS/S2')
+.filterDate('2020-01-01', '2020-06-30').filterBounds(location1);
+col.map(function(a) {
+  return a.set('month', ee.Image(a).date().get('month'));
+});
+print(col);
+//list the number of months
+var months = ee.List(col.aggregate_array('month'));
+print(months);
+var mc = months.map(function(x){
+  return col.filterMetadata('month','equals', x).mean().set('month', x);
+});
+var final_image = ee.ImageCollection.fromImages(mc);
+//timeseries chart creation for MSAVI2
+var chart = ui.Chart.image.series(final_image, location1,ee.Reducer.mean(),5000,'month')
+.setOptions({
+  title: 'MSAVI2 TIME SERIES',
+  vAxis: {title: 'Changes'},
+  hAxis: {title: 'Month'}
+});
+print(chart);
