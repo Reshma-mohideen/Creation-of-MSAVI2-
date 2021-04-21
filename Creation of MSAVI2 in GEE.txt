@@ -1,7 +1,3 @@
-<|DOCTYPE>
-<html>
-<head>
-<link ref>
 //Import Area of interest
 var polygon = location1;
 Map.centerObject(location1, 18);
